@@ -99,20 +99,30 @@ function App() {
       const boilerplateDemos: AudioDemo[] = [
         {
           id: 1,
-          text: "Welcome to our TTS model demo.",
+          text: "The quick brown fox jumps over the lazy dog.",
           models: {
-            model1: "/path/to/audio1.mp3",
-            model2: "/path/to/audio2.mp3",
+            model1: "https://freesound.org/data/previews/412/412016_7416600-lq.mp3",
+            model2: "https://freesound.org/data/previews/412/412017_7416600-lq.mp3",
           },
           selectedModel: null,
           comment: "",
         },
         {
           id: 2,
-          text: "This is another example of our TTS capabilities.",
+          text: "The five boxing wizards jump quickly.",
           models: {
-            model1: "/path/to/audio3.mp3",
-            model2: "/path/to/audio4.mp3",
+            model1: "https://freesound.org/data/previews/412/412018_7416600-lq.mp3",
+            model2: "https://freesound.org/data/previews/412/412019_7416600-lq.mp3",
+          },
+          selectedModel: null,
+          comment: "",
+        },
+        {
+          id: 3,
+          text: "How vexingly quick daft zebras jump!",
+          models: {
+            model1: "https://freesound.org/data/previews/412/412020_7416600-lq.mp3",
+            model2: "https://freesound.org/data/previews/412/412021_7416600-lq.mp3",
           },
           selectedModel: null,
           comment: "",
