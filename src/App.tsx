@@ -2,10 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import useLocalStorageState from "use-local-storage-state";
 import { styled as muiStyled } from '@mui/material/styles';
 import {
-  Typography,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
+   Typography,
   Paper,
   Box,
   Button,
@@ -16,6 +13,26 @@ import {
 } from "@mui/material";
 import AudioPlayer from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
+
+// Change this import
+import { LoremIpsum } from 'lorem-ipsum';
+
+// Add this styled component definition
+const StyledAudioPlayer = muiStyled(AudioPlayer)(({ theme }) => ({
+  '&.rhap_container': {
+    background: theme.palette.background.paper,
+    boxShadow: 'none',
+  },
+  '.rhap_main-controls-button, .rhap_volume-button': {
+    color: theme.palette.primary.main,
+  },
+  '.rhap_progress-indicator, .rhap_volume-indicator': {
+    background: theme.palette.primary.main,
+  },
+  '.rhap_progress-filled, .rhap_volume-bar': {
+    background: theme.palette.secondary.main,
+  },
+}));
 
 interface AudioFile {
   name: string;
@@ -40,29 +57,22 @@ const AppContainer = muiStyled(Box)(({ theme }) => ({
 const StyledPaper = muiStyled(Paper)(({ theme }) => ({
   background: theme.palette.background.paper,
   transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+  cursor: 'pointer',
   '&:hover': {
     transform: 'translateY(-5px)',
     boxShadow: theme.shadows[8],
   },
 }));
 
-const StyledAudioPlayer = muiStyled(AudioPlayer)(({ theme }) => ({
-  '&.rhap_container': {
-    background: theme.palette.background.paper,
-    boxShadow: 'none',
-  },
-  '.rhap_main-controls-button, .rhap_volume-button': {
-    color: theme.palette.primary.main,
-  },
-  '.rhap_progress-indicator, .rhap_progress-filled, .rhap_volume-indicator': {
-    background: theme.palette.secondary.main,
-  },
-  '.rhap_progress-bar': {
-    background: theme.palette.grey[700], // Darker background for progress bar
-  },
-  '.rhap_time': {
-    color: theme.palette.text.secondary, // Use secondary text color for time display
-  },
+const SelectedModelIndicator = muiStyled(Box)(({ theme }) => ({
+  position: 'absolute',
+  top: 0,
+  right: 0,
+  background: theme.palette.secondary.main,
+  color: theme.palette.secondary.contrastText,
+  padding: theme.spacing(0.5, 1),
+  borderRadius: '0 0 0 8px',
+  fontWeight: 'bold',
 }));
 
 const STORAGE_VERSION = 6;
@@ -141,6 +151,12 @@ const theme = createTheme({
   },
 });
 
+// Update the generateRandomSentence function
+const generateRandomSentence = () => {
+  const lorem = new LoremIpsum();
+  return lorem.generateSentences(1);
+};
+
 function App() {
   const [storageVersion] = useLocalStorageState<number>("tts_models_version", {
     defaultValue: STORAGE_VERSION,
@@ -155,6 +171,9 @@ function App() {
 
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
 
+  // Add this new state for the current sentence
+  const [currentSentence, setCurrentSentence] = useState(generateRandomSentence());
+
   useEffect(() => {
     if (storageVersion !== STORAGE_VERSION) {
       localStorage.removeItem("tts_models");
@@ -164,7 +183,7 @@ function App() {
   }, [storageVersion, setModels]);
 
   const handleModelSelection = useCallback((modelName: string) => {
-    setSelectedModel(modelName);
+    setSelectedModel((prevModel) => prevModel === modelName ? null : modelName);
   }, []);
 
   const getAudioUrl = useCallback((filePath: string) => {
@@ -181,6 +200,8 @@ function App() {
     setSelectedModel(null);
     // Pause all audio players
     audioRefs.current.forEach(player => player?.pause());
+    // Generate a new random sentence
+    setCurrentSentence(generateRandomSentence());
   }, [models]);
 
   const handlePrevious = useCallback(() => {
@@ -193,6 +214,8 @@ function App() {
     setSelectedModel(null);
     // Pause all audio players
     audioRefs.current.forEach(player => player?.pause());
+    // Generate a new random sentence
+    setCurrentSentence(generateRandomSentence());
   }, []);
 
   const currentFiles = useMemo(() => {
@@ -210,11 +233,17 @@ function App() {
         <Typography variant="h4" component="h1" gutterBottom align="center" color="primary">
           TTS Model Comparison
         </Typography>
+        <Typography variant="subtitle1" align="center" color="textSecondary" gutterBottom>
+          "{currentSentence}"
+        </Typography>
         <Grid container spacing={3}>
           {models.map((model, index) => (
             <Grid item xs={12} sm={6} key={model.name}>
-              <StyledPaper>
-                <Box p={3}>
+              <StyledPaper onClick={() => handleModelSelection(model.name)}>
+                <Box p={3} position="relative">
+                  {selectedModel === model.name && (
+                    <SelectedModelIndicator>Selected</SelectedModelIndicator>
+                  )}
                   <Typography variant="h6" color="secondary" gutterBottom>
                     {model.name}
                   </Typography>
@@ -243,25 +272,6 @@ function App() {
             </Grid>
           ))}
         </Grid>
-        <Box mt={4}>
-          <RadioGroup
-            row
-            value={selectedModel || ""}
-            onChange={(e) => handleModelSelection(e.target.value)}
-          >
-            <Typography variant="body1" component="span" style={{ marginRight: '1rem' }} color="textSecondary">
-              Preferred model:
-            </Typography>
-            {models.map((model) => (
-              <FormControlLabel
-                key={model.name}
-                value={model.name}
-                control={<Radio color="secondary" />}
-                label={model.name}
-              />
-            ))}
-          </RadioGroup>
-        </Box>
         <Box mt={4} display="flex" justifyContent="space-between">
           <Button
             variant="contained"
