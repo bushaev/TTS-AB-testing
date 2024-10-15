@@ -16,7 +16,6 @@ import {
 } from "@mui/material";
 import AudioPlayer from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
-import { blue, purple } from '@mui/material/colors';
 
 interface AudioFile {
   name: string;
@@ -58,6 +57,12 @@ const StyledAudioPlayer = muiStyled(AudioPlayer)(({ theme }) => ({
   '.rhap_progress-indicator, .rhap_progress-filled, .rhap_volume-indicator': {
     background: theme.palette.secondary.main,
   },
+  '.rhap_progress-bar': {
+    background: theme.palette.grey[700], // Darker background for progress bar
+  },
+  '.rhap_time': {
+    color: theme.palette.text.secondary, // Use secondary text color for time display
+  },
 }));
 
 const STORAGE_VERSION = 6;
@@ -86,20 +91,30 @@ const initialModels: Model[] = [
 const theme = createTheme({
   palette: {
     mode: 'dark',
-    primary: blue,
-    secondary: purple,
+    primary: {
+      main: '#78909c', // A muted blue-grey
+    },
+    secondary: {
+      main: '#a1887f', // A muted brown
+    },
     background: {
       default: '#121212',
       paper: '#1E1E1E',
+    },
+    text: {
+      primary: '#e0e0e0',
+      secondary: '#b0b0b0',
     },
   },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
     h4: {
       fontWeight: 700,
+      color: '#9e9e9e', // Light grey for headings
     },
     h6: {
       fontWeight: 600,
+      color: '#bdbdbd', // Slightly lighter grey for subheadings
     },
   },
   components: {
@@ -107,6 +122,12 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 20,
+        },
+        contained: {
+          backgroundColor: '#546e7a', // Darker blue-grey for buttons
+          '&:hover': {
+            backgroundColor: '#455a64', // Even darker on hover
+          },
         },
       },
     },
