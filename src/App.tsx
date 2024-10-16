@@ -157,6 +157,19 @@ const generateRandomSentence = () => {
   return lorem.generateSentences(1);
 };
 
+const NavigationButton = muiStyled(Button)(({ theme }) => ({
+  fontSize: '1.1rem',
+  padding: theme.spacing(1.2, 3.5),
+  minWidth: '130px',
+}));
+
+const NavigationContainer = muiStyled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'center',
+  gap: theme.spacing(3),
+  marginTop: theme.spacing(4),
+}));
+
 function App() {
   const [storageVersion] = useLocalStorageState<number>("tts_models_version", {
     defaultValue: STORAGE_VERSION,
@@ -272,24 +285,25 @@ function App() {
             </Grid>
           ))}
         </Grid>
-        <Box mt={4} display="flex" justifyContent="space-between">
-          <Button
+
+        <NavigationContainer>
+          <NavigationButton
             variant="contained"
             color="primary"
             onClick={handlePrevious}
             disabled={currentFileIndex === 0}
           >
             Previous
-          </Button>
-          <Button 
+          </NavigationButton>
+          <NavigationButton 
             variant="contained"
             color="primary"
             onClick={handleNext} 
             disabled={currentFileIndex === models[0].files.length - 1}
           >
             Next
-          </Button>
-        </Box>
+          </NavigationButton>
+        </NavigationContainer>
       </AppContainer>
     </ThemeProvider>
   );
