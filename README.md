@@ -4,6 +4,10 @@ A web application for comparing and evaluating different Text-to-Speech (TTS) mo
 
 This website was build fully by AI - Claude 3.5 Sonnet with my guidance.  (Most of this README too)
 
+![TTS Model Comparison Tool Screenshot](public/screenshot.png)
+
+![TTS Model Comparison Tool Stats Dialog](public/charts_screenshot.png)
+
 ## Features
 
 - Interactive comparison of multiple TTS models
@@ -15,8 +19,7 @@ This website was build fully by AI - Claude 3.5 Sonnet with my guidance.  (Most 
 
 ## Tech Stack
 
-### Frontend
-- React with TypeScript
+### Frontend!
 - Material UI (MUI) for components and styling
 - Vite for build tooling
 - Axios for API requests
