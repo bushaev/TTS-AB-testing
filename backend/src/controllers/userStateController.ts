@@ -85,4 +85,35 @@ export const getModelStats = async (_req: Request, res: Response) => {
     console.error('Error getting model stats:', error);
     res.status(500).json({ error: 'Failed to get model statistics' });
   }
+};
+
+export const getUserModelStats = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const comparisons = await readComparisons();
+    
+    // Filter comparisons for specific user
+    const userComparisons = comparisons.filter(comp => comp.userId === userId);
+    
+    // Calculate statistics for user
+    const stats: Record<string, { total: number; byFile: Record<number, number> }> = {};
+    
+    userComparisons.forEach(comparison => {
+      if (!stats[comparison.selectedModel]) {
+        stats[comparison.selectedModel] = { total: 0, byFile: {} };
+      }
+      
+      stats[comparison.selectedModel].total++;
+      
+      if (!stats[comparison.selectedModel].byFile[comparison.fileIndex]) {
+        stats[comparison.selectedModel].byFile[comparison.fileIndex] = 0;
+      }
+      stats[comparison.selectedModel].byFile[comparison.fileIndex]++;
+    });
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('Error getting user model stats:', error);
+    res.status(500).json({ error: 'Failed to get user model statistics' });
+  }
 }; 

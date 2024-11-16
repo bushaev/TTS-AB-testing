@@ -1,1 +1,86 @@
-[]
+[
+  {
+    "userId": "V",
+    "fileIndex": 0,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:46:34.618Z"
+  },
+  {
+    "userId": "V",
+    "fileIndex": 1,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:46:34.618Z"
+  },
+  {
+    "userId": "V",
+    "fileIndex": 2,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:46:34.618Z"
+  },
+  {
+    "userId": "German",
+    "fileIndex": 0,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:46:53.852Z"
+  },
+  {
+    "userId": "German",
+    "fileIndex": 1,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:46:53.852Z"
+  },
+  {
+    "userId": "German",
+    "fileIndex": 2,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:46:53.852Z"
+  },
+  {
+    "userId": "G",
+    "fileIndex": 0,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:47:13.142Z"
+  },
+  {
+    "userId": "G",
+    "fileIndex": 1,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:47:13.142Z"
+  },
+  {
+    "userId": "G",
+    "fileIndex": 2,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:47:13.142Z"
+  },
+  {
+    "userId": "Q",
+    "fileIndex": 0,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:47:39.818Z"
+  },
+  {
+    "userId": "Q",
+    "fileIndex": 1,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:47:39.818Z"
+  },
+  {
+    "userId": "Q",
+    "fileIndex": 2,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:47:39.818Z"
+  },
+  {
+    "userId": "W",
+    "fileIndex": 0,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:48:00.055Z"
+  },
+  {
+    "userId": "W",
+    "fileIndex": 2,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:48:00.055Z"
+  }
+]
