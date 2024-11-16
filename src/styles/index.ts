@@ -1,6 +1,7 @@
 import { styled as muiStyled } from '@mui/material/styles';
 import { Box, Paper, Button } from '@mui/material';
 import AudioPlayer from 'react-h5-audio-player';
+import 'react-h5-audio-player/lib/styles.css';
 
 export const StyledAudioPlayer = muiStyled(AudioPlayer)(({ theme }) => ({
   '&.rhap_container': {

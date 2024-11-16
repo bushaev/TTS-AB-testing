@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import useLocalStorageState from "use-local-storage-state";
 import { Typography, Box, Button, ThemeProvider, CssBaseline, Grid } from "@mui/material";
 import axios from 'axios';
 import { StyledAudioPlayer, AppContainer, StyledPaper, SelectedModelIndicator, NavigationButton, NavigationContainer } from "./styles/index";
@@ -7,90 +6,43 @@ import { theme } from "./theme";
 import { NameDialog } from "./components/NameDialog";
 import { StatsDialog } from "./components/StatsDialog";
 import { Model, ModelStats } from "./types";
-import 'react-h5-audio-player/lib/styles.css';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
 function App() {
-  const [models, setModels] = useLocalStorageState<Model[]>("tts_models", {
-    defaultValue: [],
-  });
-
+  const [models, setModels] = useState<Model[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-
-  const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
-
-  // Update the sentence state to be null initially
   const [currentSentence, setCurrentSentence] = useState<string | null>(null);
-
-  // Replace the userDialog state with these two states
   const [dialogOpen, setDialogOpen] = useState(!localStorage.getItem('userName'));
   const [inputName, setInputName] = useState('');
   const [userId, setUserId] = useState(() => localStorage.getItem('userName') || '');
-
   const [showStats, setShowStats] = useState(false);
   const [modelStats, setModelStats] = useState<ModelStats | null>(null);
 
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/audio/models`);
-        setModels(response.data);
-        // Set initial sentence if available
-        if (response.data[0]?.files[0]?.sentence) {
-          setCurrentSentence(response.data[0].files[0].sentence);
-        }
-      } catch (error) {
-        console.error('Failed to fetch models:', error);
-      }
-    };
+  const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
 
-    fetchModels();
+  const pauseAllAudio = useCallback(() => {
+    document.querySelectorAll('audio').forEach(audio => audio.pause());
   }, []);
 
-  useEffect(() => {
-    const loadUserState = async () => {
-      const userName = localStorage.getItem('userName');
-      if (!userName) return;
-      
-      try {
-        const response = await axios.get(`${API_BASE_URL}/state/${userName}`);
-        if (response.data) {
-          const { currentFileIndex, selectedModel } = response.data;
-          setCurrentFileIndex(currentFileIndex);
-          setSelectedModel(selectedModel);
-        }
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status !== 404) {
-          console.error('Failed to load user state:', error);
-        }
-      }
-    };
-
-    loadUserState();
-  }, []);
-
-  // Update the getAudioUrl function
   const getAudioUrl = useCallback((filePath: string) => {
     return `${API_BASE_URL}/audio/file/${filePath}`;
   }, []);
 
-  // Update saveUserState function
-  const saveUserState = useCallback(async () => {
-    if (!selectedModel || !userId) return;
-    
-    try {
-      await axios.post(`${API_BASE_URL}/state/${userId}`, {
-        currentFileIndex,
-        selectedModel,
-      });
-    } catch (error) {
-      console.error('Failed to save user state:', error);
-    }
-  }, [currentFileIndex, selectedModel, userId]);
+  const updateCurrentSentence = useCallback((index: number) => {
+    setCurrentSentence(models[0]?.files[index]?.sentence ?? null);
+  }, [models]);
 
-  // Update handleModelSelection function to save state
+  const fetchModelStats = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/state/stats/models`);
+      setModelStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch model stats:', error);
+    }
+  }, []);
+
   const handleModelSelection = useCallback(async (modelName: string) => {
     setSelectedModel((prevModel) => {
       const newModel = prevModel === modelName ? null : modelName;
@@ -108,83 +60,46 @@ function App() {
     });
   }, [currentFileIndex, userId]);
 
-  // Update fetchModelStats function
-  const fetchModelStats = useCallback(async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/state/stats/models`);
-      setModelStats(response.data);
-    } catch (error) {
-      console.error('Failed to fetch model stats:', error);
-    }
-  }, []);
-
   const handleNext = useCallback(async () => {
     setCurrentFileIndex((prevIndex) => {
       const isLastSample = models.length > 0 && prevIndex >= models[0].files.length - 1;
       
       if (isLastSample) {
-        if (selectedModel) {
-          // Ensure the last comparison is saved before showing stats
-          const userName = localStorage.getItem('userName');
-          if (userName) {
-            axios.post(`${API_BASE_URL}/state/${userName}/comparison`, {
-              selectedModel,
-              fileIndex: prevIndex
-            }).then(() => {
-              fetchModelStats();
-              setShowStats(true);
-            }).catch(error => {
-              console.error('Failed to save final comparison:', error);
-            });
-          }
+        if (selectedModel && userId) {
+          axios.post(`${API_BASE_URL}/state/${userId}/comparison`, {
+            selectedModel,
+            fileIndex: prevIndex
+          }).then(() => {
+            fetchModelStats();
+            setShowStats(true);
+          }).catch(error => {
+            console.error('Failed to save final comparison:', error);
+          });
         }
         return prevIndex;
       }
       
-      // Set the sentence from the next file
       const nextIndex = prevIndex + 1;
-      if (models[0]?.files[nextIndex]?.sentence) {
-        setCurrentSentence(models[0].files[nextIndex].sentence);
-      }
-      
+      updateCurrentSentence(nextIndex);
       return nextIndex;
     });
     
     setSelectedModel(null);
-    audioRefs.current.forEach(player => player?.pause());
-    setCurrentSentence(null);
-  }, [models, selectedModel, fetchModelStats]);
+    pauseAllAudio();
+  }, [models, selectedModel, fetchModelStats, userId, updateCurrentSentence, pauseAllAudio]);
 
   const handlePrevious = useCallback(() => {
     setCurrentFileIndex((prevIndex) => {
       if (prevIndex > 0) {
-        // Set the sentence from the previous file
-        if (models[0]?.files[prevIndex - 1]?.sentence) {
-          setCurrentSentence(models[0].files[prevIndex - 1].sentence);
-        }
+        updateCurrentSentence(prevIndex - 1);
         return prevIndex - 1;
       }
       return prevIndex;
     });
     setSelectedModel(null);
-    // Pause all audio players
-    audioRefs.current.forEach(player => player?.pause());
-    // Generate a new random sentence
-    setCurrentSentence(null);
-  }, [models]);
+    pauseAllAudio();
+  }, [updateCurrentSentence, pauseAllAudio]);
 
-  const currentFiles = useMemo(() => {
-    return models.map(model => model.files[currentFileIndex]).filter(Boolean);
-  }, [models, currentFileIndex]);
-
-  if (models.length === 0) {
-    return <Typography>Loading models...</Typography>;
-  }
-
-  console.log('Models:', models);
-  console.log('Current Files:', currentFiles);
-
-  // Update the handleNameSubmit function
   const handleNameSubmit = useCallback(() => {
     if (inputName.trim()) {
       const newUserId = inputName.trim();
@@ -194,13 +109,52 @@ function App() {
     }
   }, [inputName]);
 
-  // Update the handleResetName function
   const handleResetName = useCallback(() => {
     localStorage.removeItem('userName');
     setUserId('');
     setInputName('');
     setDialogOpen(true);
   }, []);
+
+  const currentFiles = useMemo(() => {
+    return models.map(model => model.files[currentFileIndex]).filter(Boolean);
+  }, [models, currentFileIndex]);
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        const modelsResponse = await axios.get(`${API_BASE_URL}/audio/models`);
+        setModels(modelsResponse.data);
+        if (modelsResponse.data[0]?.files[0]?.sentence) {
+          setCurrentSentence(modelsResponse.data[0].files[0].sentence);
+        }
+
+        const userName = localStorage.getItem('userName');
+        if (userName) {
+          try {
+            const stateResponse = await axios.get(`${API_BASE_URL}/state/${userName}`);
+            if (stateResponse.data) {
+              const { currentFileIndex, selectedModel } = stateResponse.data;
+              setCurrentFileIndex(currentFileIndex);
+              setSelectedModel(selectedModel);
+            }
+          } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status !== 404) {
+              console.error('Failed to load user state:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize app:', error);
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  if (models.length === 0) {
+    return <Typography>Loading models...</Typography>;
+  }
 
   return (
     <ThemeProvider theme={theme}>
