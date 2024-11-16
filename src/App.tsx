@@ -6,13 +6,20 @@ import {
   Paper,
   Box,
   Button,
-  Grid,
   ThemeProvider,
   createTheme,
   CssBaseline,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from "@mui/material";
 import AudioPlayer from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
+import axios from 'axios';
+import { Grid } from '@mui/material';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 // Change this import
 import { LoremIpsum } from 'lorem-ipsum';
@@ -45,6 +52,11 @@ interface Model {
   files: AudioFile[];
 }
 
+interface ModelStats {
+  totalComparisons: number;
+  modelSelections: Record<string, number>;
+}
+
 const AppContainer = muiStyled(Box)(({ theme }) => ({
   maxWidth: '1000px',
   margin: '0 auto',
@@ -74,29 +86,6 @@ const SelectedModelIndicator = muiStyled(Box)(({ theme }) => ({
   borderRadius: '0 0 0 8px',
   fontWeight: 'bold',
 }));
-
-const STORAGE_VERSION = 6;
-
-const initialModels: Model[] = [
-  {
-    name: "Model A",
-    folderPath: "model1",
-    files: [
-      { name: "sample1.wav", path: "model1/sample1.wav" },
-      { name: "sample2.wav", path: "model1/sample2.wav" },
-      { name: "sample3.wav", path: "model1/sample3.wav" },
-    ],
-  },
-  {
-    name: "Model B",
-    folderPath: "model2",
-    files: [
-      { name: "sample1.wav", path: "model2/sample1.wav" },
-      { name: "sample2.wav", path: "model2/sample2.wav" },
-      { name: "sample3.wav", path: "model2/sample3.wav" },
-    ],
-  },
-];
 
 const theme = createTheme({
   palette: {
@@ -170,13 +159,72 @@ const NavigationContainer = muiStyled(Box)(({ theme }) => ({
   marginTop: theme.spacing(4),
 }));
 
-function App() {
-  const [storageVersion] = useLocalStorageState<number>("tts_models_version", {
-    defaultValue: STORAGE_VERSION,
-  });
+const API_BASE_URL = 'http://localhost:3001/api';
 
+// First, remove the NameDialog from useMemo and define it as a component
+// Add this component definition before the App component
+const NameDialog = ({ 
+  open, 
+  name, 
+  onNameChange, 
+  onSubmit 
+}: {
+  open: boolean;
+  name: string;
+  onNameChange: (name: string) => void;
+  onSubmit: () => void;
+}) => (
+  <Dialog 
+    open={open} 
+    onClose={(e, reason) => {
+      if (reason !== 'backdropClick') onSubmit();
+    }}
+    disableEscapeKeyDown
+  >
+    <DialogTitle>Welcome!</DialogTitle>
+    <DialogContent>
+      <Typography variant="body1" gutterBottom sx={{ mt: 2 }}>
+        Please enter your name to continue:
+      </Typography>
+      <TextField
+        autoFocus
+        margin="dense"
+        fullWidth
+        value={name}
+        onChange={(e) => onNameChange(e.target.value)}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') onSubmit();
+        }}
+        autoComplete="off"
+        inputProps={{
+          autoComplete: 'off',
+          'data-lpignore': 'true',
+          'data-form-type': 'other',
+        }}
+        type="text"
+        placeholder="Enter your name"
+        name="display-name"
+      />
+    </DialogContent>
+    <DialogActions>
+      <Button 
+        onClick={onSubmit}
+        disabled={!name.trim()}
+        variant="contained"
+        color="primary"
+      >
+        Continue
+      </Button>
+    </DialogActions>
+  </Dialog>
+);
+
+// Add these constants before the App component
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+function App() {
   const [models, setModels] = useLocalStorageState<Model[]>("tts_models", {
-    defaultValue: initialModels,
+    defaultValue: [],
   });
 
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
@@ -187,35 +235,131 @@ function App() {
   // Add this new state for the current sentence
   const [currentSentence, setCurrentSentence] = useState(generateRandomSentence());
 
+  // Replace the userDialog state with these two states
+  const [dialogOpen, setDialogOpen] = useState(!localStorage.getItem('userName'));
+  const [inputName, setInputName] = useState('');
+  const [userId] = useState(() => localStorage.getItem('userName') || '');
+
+  const [showStats, setShowStats] = useState(false);
+  const [modelStats, setModelStats] = useState<ModelStats | null>(null);
+
   useEffect(() => {
-    if (storageVersion !== STORAGE_VERSION) {
-      localStorage.removeItem("tts_models");
-      localStorage.setItem("tts_models_version", STORAGE_VERSION.toString());
-      setModels(initialModels);
-    }
-  }, [storageVersion, setModels]);
-
-  const handleModelSelection = useCallback((modelName: string) => {
-    setSelectedModel((prevModel) => prevModel === modelName ? null : modelName);
-  }, []);
-
-  const getAudioUrl = useCallback((filePath: string) => {
-    return `/web-2024-template/${filePath}`;
-  }, []);
-
-  const handleNext = useCallback(() => {
-    setCurrentFileIndex((prevIndex) => {
-      if (models.length > 0 && prevIndex < models[0].files.length - 1) {
-        return prevIndex + 1;
+    const fetchModels = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/audio/models`);
+        setModels(response.data);
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
       }
-      return prevIndex;
+    };
+
+    fetchModels();
+  }, []);
+
+  useEffect(() => {
+    const loadUserState = async () => {
+      const userName = localStorage.getItem('userName');
+      if (!userName) return;
+      
+      try {
+        const response = await axios.get(`${API_BASE_URL}/state/${userName}`);
+        if (response.data) {
+          const { currentFileIndex, selectedModel } = response.data;
+          setCurrentFileIndex(currentFileIndex);
+          setSelectedModel(selectedModel);
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status !== 404) {
+          console.error('Failed to load user state:', error);
+        }
+      }
+    };
+
+    loadUserState();
+  }, []);
+
+  // Update the getAudioUrl function
+  const getAudioUrl = useCallback((filePath: string) => {
+    return `${API_BASE_URL}/audio/file/${filePath}`;
+  }, []);
+
+  // Update saveUserState function
+  const saveUserState = useCallback(async () => {
+    const userName = localStorage.getItem('userName');
+    if (!selectedModel || !userName) return;
+    
+    try {
+      await axios.post(`${API_BASE_URL}/state/${userName}`, {
+        currentFileIndex,
+        selectedModel,
+      });
+    } catch (error) {
+      console.error('Failed to save user state:', error);
+    }
+  }, [currentFileIndex, selectedModel]);
+
+  // Update handleModelSelection function to save state
+  const handleModelSelection = useCallback(async (modelName: string) => {
+    setSelectedModel((prevModel) => {
+      const newModel = prevModel === modelName ? null : modelName;
+      
+      // Save the comparison if a model was selected
+      if (newModel) {
+        const userName = localStorage.getItem('userName');
+        if (userName) {
+          axios.post(`${API_BASE_URL}/state/${userName}/comparison`, {
+            selectedModel: newModel,
+            fileIndex: currentFileIndex
+          }).catch(error => {
+            console.error('Failed to save comparison:', error);
+          });
+        }
+      }
+      
+      return newModel;
     });
+  }, [currentFileIndex]);
+
+  // Update fetchModelStats function
+  const fetchModelStats = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/state/stats/models`);
+      setModelStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch model stats:', error);
+    }
+  }, []);
+
+  const handleNext = useCallback(async () => {
+    setCurrentFileIndex((prevIndex) => {
+      const isLastSample = models.length > 0 && prevIndex >= models[0].files.length - 1;
+      
+      if (isLastSample) {
+        if (selectedModel) {
+          // Ensure the last comparison is saved before showing stats
+          const userName = localStorage.getItem('userName');
+          if (userName) {
+            axios.post(`${API_BASE_URL}/state/${userName}/comparison`, {
+              selectedModel,
+              fileIndex: prevIndex
+            }).then(() => {
+              fetchModelStats();
+              setShowStats(true);
+            }).catch(error => {
+              console.error('Failed to save final comparison:', error);
+            });
+          }
+        }
+        return prevIndex;
+      }
+      
+      return prevIndex + 1;
+    });
+    
     setSelectedModel(null);
-    // Pause all audio players
     audioRefs.current.forEach(player => player?.pause());
-    // Generate a new random sentence
     setCurrentSentence(generateRandomSentence());
-  }, [models]);
+  }, [models, selectedModel, fetchModelStats]);
 
   const handlePrevious = useCallback(() => {
     setCurrentFileIndex((prevIndex) => {
@@ -239,6 +383,90 @@ function App() {
     return <Typography>Loading models...</Typography>;
   }
 
+  console.log('Models:', models);
+  console.log('Current Files:', currentFiles);
+
+  // Update the StatsDialog component inside App function
+  const StatsDialog = () => {
+    // Transform the stats data for the pie chart
+    const chartData = modelStats ? Object.entries(modelStats.modelSelections).map(([name, value]) => ({
+      name,
+      value,
+      percentage: ((value / modelStats.totalComparisons) * 100).toFixed(1)
+    })) : [];
+
+    return (
+      <Dialog 
+        open={showStats} 
+        onClose={() => setShowStats(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Model Comparison Results</DialogTitle>
+        <DialogContent>
+          {modelStats && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Total Comparisons: {modelStats.totalComparisons}
+              </Typography>
+              
+              {/* Add the pie chart */}
+              <Box sx={{ width: '100%', height: 400, mt: 2 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={150}
+                      label={({ name, percentage }) => `${name} (${percentage}%)`}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => [
+                        `${value} selections (${((value / modelStats.totalComparisons) * 100).toFixed(1)}%)`,
+                        'Selections'
+                      ]}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowStats(false)} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
+  // Update the handleNameSubmit function
+  const handleNameSubmit = useCallback(() => {
+    if (inputName.trim()) {
+      localStorage.setItem('userName', inputName.trim());
+      setDialogOpen(false);
+    }
+  }, [inputName]);
+
+  // Update the handleResetName function
+  const handleResetName = useCallback(() => {
+    localStorage.removeItem('userName');
+    setInputName('');
+    setDialogOpen(true);
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -246,12 +474,29 @@ function App() {
         <Typography variant="h4" component="h1" gutterBottom align="center" color="primary">
           TTS Model Comparison
         </Typography>
+        <Box display="flex" justifyContent="center" mb={2}>
+          <Button
+            size="small"
+            onClick={handleResetName}
+            variant="outlined"
+            color="secondary"
+          >
+            Change Name
+          </Button>
+        </Box>
         <Typography variant="subtitle1" align="center" color="textSecondary" gutterBottom>
           "{currentSentence}"
         </Typography>
         <Grid container spacing={3}>
           {models.map((model, index) => (
-            <Grid item xs={12} sm={6} key={model.name}>
+            <Grid 
+              item 
+              xs={12}
+              sm={6}
+              lg={6}
+              key={model.name}
+              style={{ width: '100%' }}
+            >
               <StyledPaper onClick={() => handleModelSelection(model.name)}>
                 <Box p={3} position="relative">
                   {selectedModel === model.name && (
@@ -299,11 +544,18 @@ function App() {
             variant="contained"
             color="primary"
             onClick={handleNext} 
-            disabled={currentFileIndex === models[0].files.length - 1}
+            disabled={currentFileIndex === models[0].files.length - 1 && !selectedModel}
           >
-            Next
+            {currentFileIndex === models[0].files.length - 1 ? 'Show Results' : 'Next'}
           </NavigationButton>
         </NavigationContainer>
+        <StatsDialog />
+        <NameDialog 
+          open={dialogOpen}
+          name={inputName}
+          onNameChange={setInputName}
+          onSubmit={handleNameSubmit}
+        />
       </AppContainer>
     </ThemeProvider>
   );
