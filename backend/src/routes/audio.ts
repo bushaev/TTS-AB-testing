@@ -4,10 +4,12 @@ import fs from 'fs/promises';
 
 const router = express.Router();
 const AUDIO_DIR = path.join(__dirname, '../../audio');
+const SENTENCES_PATH = path.join(AUDIO_DIR, 'sentences.txt');
 
 interface AudioFile {
   name: string;
   path: string;
+  sentence: string;
 }
 
 interface Model {
@@ -19,8 +21,20 @@ interface Model {
 // Get all models and their audio files
 router.get('/models', async (_req, res) => {
   try {
+    // Read sentences file
+    let sentences: string[] = [];
+    try {
+      const sentencesContent = await fs.readFile(SENTENCES_PATH, 'utf-8');
+      sentences = sentencesContent.split('\n').filter(line => line.trim());
+    } catch (error) {
+      console.error('Error reading sentences file:', error);
+      sentences = [];
+    }
+
     // Read all directories in the audio folder
     const modelDirs = await fs.readdir(AUDIO_DIR);
+    
+    let sentenceIndex = 0; // Keep track of the current sentence index
     
     // Create model objects for each directory
     const modelsWithNull = await Promise.all(
@@ -35,10 +49,17 @@ router.get('/models', async (_req, res) => {
         const files = await fs.readdir(modelPath);
         const audioFiles = files
           .filter(file => file.endsWith('.wav') || file.endsWith('.mp3'))
-          .map(file => ({
-            name: file,
-            path: `${dir}/${file}`
-          }));
+          .map(file => {
+            // Assign sentence and increment index, wrapping around if needed
+            const sentence = sentences[sentenceIndex] || '';
+            sentenceIndex = (sentenceIndex + 1) % Math.max(1, sentences.length);
+            
+            return {
+              name: file,
+              path: `${dir}/${file}`,
+              sentence
+            };
+          });
 
         return {
           name: dir,
