@@ -74,13 +74,19 @@
   {
     "userId": "W",
     "fileIndex": 0,
-    "selectedModel": "model1",
-    "timestamp": "2024-11-16T20:48:00.055Z"
+    "selectedModel": "model4",
+    "timestamp": "2024-11-16T20:50:09.871Z"
+  },
+  {
+    "userId": "W",
+    "fileIndex": 1,
+    "selectedModel": "model4",
+    "timestamp": "2024-11-16T20:50:09.871Z"
   },
   {
     "userId": "W",
     "fileIndex": 2,
-    "selectedModel": "model2",
-    "timestamp": "2024-11-16T20:48:00.055Z"
+    "selectedModel": "model3",
+    "timestamp": "2024-11-16T20:50:09.871Z"
   }
 ]

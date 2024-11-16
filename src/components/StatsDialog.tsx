@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#e57373', '#64b5f6', '#81c784', '#ba68c8', '#4db6ac', '#ff8a65', '#7986cb', '#fff176', '#a1887f'];
 const API_BASE_URL = 'http://localhost:3001/api';
 
 interface ModelStats {
@@ -55,6 +55,15 @@ export const StatsDialog = ({ open, onClose, stats: allStats }: StatsDialogProps
     }))
     .filter(item => item.value > 0) : [];
 
+  // Get all possible model names and sort them to ensure consistent color mapping
+  const allModelNames = Object.keys(allStats || {}).sort();
+  
+  // Create a mapping of model name to color index
+  const getColorForModel = (modelName: string) => {
+    const colorIndex = allModelNames.indexOf(modelName);
+    return COLORS[colorIndex % COLORS.length];
+  };
+
   const renderPieChart = (data: typeof allUsersChartData, title: string) => (
     <Box sx={{ width: '100%', height: 400, mt: 2 }}>
       <Typography variant="h6" align="center" gutterBottom>
@@ -71,10 +80,10 @@ export const StatsDialog = ({ open, onClose, stats: allStats }: StatsDialogProps
             outerRadius={150}
             label={({ name, percentage }) => `${name} (${percentage}%)`}
           >
-            {data.map((_, index) => (
+            {data.map((entry) => (
               <Cell 
-                key={`cell-${index}`} 
-                fill={COLORS[index % COLORS.length]}
+                key={`cell-${entry.name}`} 
+                fill={getColorForModel(entry.name)}
               />
             ))}
           </Pie>
