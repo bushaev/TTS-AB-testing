@@ -1,14 +1,10 @@
 import express from 'express';
 import { 
-  saveUserState, 
-  getUserState, 
-  saveComparison,
+  saveComparisons,
   getModelStats 
 } from '../controllers/userStateController';
 
 export const router = express.Router();
 
-router.post('/:userId', saveUserState);
-router.get('/:userId', getUserState);
-router.post('/:userId/comparison', saveComparison);
+router.post('/:userId/comparisons', saveComparisons);
 router.get('/stats/models', getModelStats);

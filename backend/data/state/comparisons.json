@@ -1,1 +1,56 @@
-[]
+[
+  {
+    "userId": "V",
+    "fileIndex": 0,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:25:13.130Z"
+  },
+  {
+    "userId": "V",
+    "fileIndex": 1,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:25:13.130Z"
+  },
+  {
+    "userId": "V",
+    "fileIndex": 2,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:25:13.130Z"
+  },
+  {
+    "userId": "German",
+    "fileIndex": 0,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:25:28.014Z"
+  },
+  {
+    "userId": "German",
+    "fileIndex": 1,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:25:28.014Z"
+  },
+  {
+    "userId": "German",
+    "fileIndex": 2,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:25:28.014Z"
+  },
+  {
+    "userId": "Danya",
+    "fileIndex": 0,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:25:48.287Z"
+  },
+  {
+    "userId": "Danya",
+    "fileIndex": 1,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:25:48.287Z"
+  },
+  {
+    "userId": "Danya",
+    "fileIndex": 2,
+    "selectedModel": "model2",
+    "timestamp": "2024-11-16T20:25:48.287Z"
+  }
+]

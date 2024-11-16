@@ -21,13 +21,16 @@ app.use((err: Error, _req: express.Request, res: express.Response, next: express
 app.use('/api/audio', audioRouter);
 app.use('/api/state', userStateRouter);
 
-// Serve frontend static files
-app.use(express.static(path.join(__dirname, '../../dist')));
 
-// Serve index.html for all other routes (for SPA routing)
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, '../../dist/index.html'));
-});
+// I don't think this is needed anymore
+// Will test without it
+// Serve frontend static files
+// app.use(express.static(path.join(__dirname, '../../dist')));
+
+// // Serve index.html for all other routes (for SPA routing)
+// app.get('*', (_req, res) => {
+//   res.sendFile(path.join(__dirname, '../../dist/index.html'));
+// });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -11,6 +11,5 @@ export interface Model {
 }
 
 export interface ModelStats {
-  totalComparisons: number;
-  modelSelections: Record<string, number>;
+  [modelName: string]: number;
 } 

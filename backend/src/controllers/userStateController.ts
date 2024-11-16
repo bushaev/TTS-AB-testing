@@ -5,139 +5,84 @@ import path from 'path';
 const STATE_DIR = path.join(__dirname, '../../data/state');
 const COMPARISONS_FILE = path.join(STATE_DIR, 'comparisons.json');
 
-interface UserState {
-  userId: string;
-  currentFileIndex: number;
-  selectedModel: string | null;
-  lastUpdated: Date;
-  comparisons: Array<{
-    fileIndex: number;
-    selectedModel: string;
-    timestamp: Date;
-  }>;
-}
-
-interface ModelStats {
-  totalComparisons: number;
-  modelSelections: Record<string, number>;
-}
-
-// In-memory storage
-const userStates = new Map<string, UserState>();
-
 interface Comparison {
   userId: string;
-  selectedModel: string;
   fileIndex: number;
-  timestamp: number;
+  selectedModel: string;
+  timestamp: string;
 }
 
-// Initialize the comparisons file if it doesn't exist
-const initializeComparisons = async () => {
+
+// Read comparisons file
+const readComparisons = async (): Promise<Comparison[]> => {
   try {
-    await fs.mkdir(STATE_DIR, { recursive: true });
-    try {
-      await fs.access(COMPARISONS_FILE);
-    } catch {
-      await fs.writeFile(COMPARISONS_FILE, JSON.stringify([]));
-    }
-  } catch (error) {
-    console.error('Error initializing comparisons:', error);
+    const data = await fs.readFile(COMPARISONS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return [];
   }
 };
 
-initializeComparisons();
+// Write comparisons to file
+const writeComparisons = async (comparisons: Comparison[]) => {
+  await fs.writeFile(COMPARISONS_FILE, JSON.stringify(comparisons, null, 2));
+};
 
-export const getUserState = (req: Request, res: Response) => {
-  const { userId } = req.params;
-  const state = userStates.get(userId);
-  
-  if (!state) {
-    const initialState = {
+// New function to save multiple comparisons
+export const saveComparisons = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const newComparisons: Array<{ fileIndex: number; selectedModel: string }> = req.body;
+    
+    const existingComparisons = await readComparisons();
+    
+    // Remove previous comparisons for this user
+    const filteredComparisons = existingComparisons.filter(c => c.userId !== userId);
+    
+    // Add new comparisons with timestamp
+    const comparisonsToAdd = newComparisons.map(comparison => ({
       userId,
-      currentFileIndex: 0,
-      selectedModel: null,
-      lastUpdated: new Date(),
-      comparisons: [],
-    };
-    userStates.set(userId, initialState);
-    return res.json(initialState);
-  }
-  
-  res.json(state);
-};
-
-export const saveUserState = (req: Request, res: Response) => {
-  const { userId } = req.params;
-  const { currentFileIndex, selectedModel } = req.body;
-  
-  let state = userStates.get(userId) || {
-    userId,
-    currentFileIndex: 0,
-    selectedModel: null,
-    lastUpdated: new Date(),
-    comparisons: [],
-  };
-  
-  if (selectedModel && selectedModel !== state.selectedModel) {
-    state.comparisons.push({
-      fileIndex: currentFileIndex,
-      selectedModel,
-      timestamp: new Date(),
-    });
-  }
-  
-  state = {
-    ...state,
-    currentFileIndex,
-    selectedModel,
-    lastUpdated: new Date(),
-  };
-  
-  userStates.set(userId, state);
-  res.json(state);
-};
-
-export const saveComparison = async (req: Request, res: Response) => {
-  try {
-    const userId = req.params.userId;
-    const { selectedModel, fileIndex } = req.body;
-
-    const comparison: Comparison = {
-      userId,
-      selectedModel,
-      fileIndex,
-      timestamp: Date.now()
-    };
-
-    const comparisonsStr = await fs.readFile(COMPARISONS_FILE, 'utf-8');
-    const comparisons: Comparison[] = JSON.parse(comparisonsStr);
-    comparisons.push(comparison);
-    await fs.writeFile(COMPARISONS_FILE, JSON.stringify(comparisons, null, 2));
-
-    res.status(200).json({ message: 'Comparison saved successfully' });
+      fileIndex: comparison.fileIndex,
+      selectedModel: comparison.selectedModel,
+      timestamp: new Date().toISOString()
+    }));
+    
+    const updatedComparisons = [...filteredComparisons, ...comparisonsToAdd];
+    await writeComparisons(updatedComparisons);
+    
+    res.json({ success: true });
   } catch (error) {
-    console.error('Error saving comparison:', error);
-    res.status(500).json({ error: 'Failed to save comparison' });
+    console.error('Error saving comparisons:', error);
+    res.status(500).json({ error: 'Failed to save comparisons' });
   }
 };
 
-export const getModelStats = async (req: Request, res: Response) => {
+export const getModelStats = async (_req: Request, res: Response) => {
+  /**
+   * Returns the number of times each model was selected and the number of times each model was selected for each file.
+   */
   try {
-    const comparisonsStr = await fs.readFile(COMPARISONS_FILE, 'utf-8');
-    const comparisons: Comparison[] = JSON.parse(comparisonsStr);
-
-    const modelSelections: Record<string, number> = {};
+    const comparisons = await readComparisons();
+    
+    // Calculate statistics
+    const stats: Record<string, { total: number; byFile: Record<number, number> }> = {};
+    
     comparisons.forEach(comparison => {
-      modelSelections[comparison.selectedModel] = (modelSelections[comparison.selectedModel] || 0) + 1;
+      if (!stats[comparison.selectedModel]) {
+        stats[comparison.selectedModel] = { total: 0, byFile: {} };
+      }
+      
+      stats[comparison.selectedModel].total++;
+      
+      if (!stats[comparison.selectedModel].byFile[comparison.fileIndex]) {
+        stats[comparison.selectedModel].byFile[comparison.fileIndex] = 0;
+      }
+      stats[comparison.selectedModel].byFile[comparison.fileIndex]++;
     });
-
-    res.json({
-      totalComparisons: comparisons.length,
-      modelSelections
-    });
+    
+    res.json(stats);
   } catch (error) {
     console.error('Error getting model stats:', error);
-    res.status(500).json({ error: 'Failed to get model stats' });
+    res.status(500).json({ error: 'Failed to get model statistics' });
   }
 }; 

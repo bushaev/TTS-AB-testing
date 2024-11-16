@@ -12,15 +12,19 @@ const API_BASE_URL = 'http://localhost:3001/api';
 function App() {
   const [models, setModels] = useState<Model[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [currentSentence, setCurrentSentence] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(!localStorage.getItem('userName'));
-  const [inputName, setInputName] = useState('');
   const [userId, setUserId] = useState(() => localStorage.getItem('userName') || '');
+  const [inputName, setInputName] = useState('');
+
   const [showStats, setShowStats] = useState(false);
   const [modelStats, setModelStats] = useState<ModelStats | null>(null);
 
+  const [selections, setSelections] = useState<Record<number, string>>({});
+
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const pauseAllAudio = useCallback(() => {
     document.querySelectorAll('audio').forEach(audio => audio.pause());
@@ -43,50 +47,54 @@ function App() {
     }
   }, []);
 
-  const handleModelSelection = useCallback(async (modelName: string) => {
-    setSelectedModel((prevModel) => {
-      const newModel = prevModel === modelName ? null : modelName;
+  const handleModelSelection = useCallback((modelName: string) => {
+    setSelections(prevSelections => {
+      const newSelections = { ...prevSelections };
       
-      if (newModel && userId) {
-        axios.post(`${API_BASE_URL}/state/${userId}/comparison`, {
-          selectedModel: newModel,
-          fileIndex: currentFileIndex
-        }).catch(error => {
-          console.error('Failed to save comparison:', error);
-        });
+      if (prevSelections[currentFileIndex] === modelName) {
+        delete newSelections[currentFileIndex];
+      } else {
+        newSelections[currentFileIndex] = modelName;
       }
       
-      return newModel;
+      return newSelections;
     });
-  }, [currentFileIndex, userId]);
+  }, [currentFileIndex]);
 
   const handleNext = useCallback(async () => {
     setCurrentFileIndex((prevIndex) => {
       const isLastSample = models.length > 0 && prevIndex >= models[0].files.length - 1;
-      
-      if (isLastSample) {
-        if (selectedModel && userId) {
-          axios.post(`${API_BASE_URL}/state/${userId}/comparison`, {
-            selectedModel,
-            fileIndex: prevIndex
-          }).then(() => {
-            fetchModelStats();
+
+      if (isLastSample && userId) {
+        setIsLoading(true);
+        const comparisons = Object.entries(selections).map(([fileIndex, modelName]) => ({
+          fileIndex: parseInt(fileIndex),
+          selectedModel: modelName
+        }));
+        
+        axios.post(`${API_BASE_URL}/state/${userId}/comparisons`, comparisons)
+          .then(() => {
+            return fetchModelStats();
+          })
+          .then(() => {
             setShowStats(true);
-          }).catch(error => {
-            console.error('Failed to save final comparison:', error);
+            setIsLoading(false);
+          })
+          .catch(error => {
+            console.error('Failed to save comparisons:', error);
+            setIsLoading(false);
           });
-        }
+          
         return prevIndex;
       }
       
-      const nextIndex = prevIndex + 1;
+      const nextIndex = Math.min(prevIndex + 1, models[0].files.length - 1);
       updateCurrentSentence(nextIndex);
       return nextIndex;
     });
     
-    setSelectedModel(null);
     pauseAllAudio();
-  }, [models, selectedModel, fetchModelStats, userId, updateCurrentSentence, pauseAllAudio]);
+  }, [models, selections, fetchModelStats, userId, updateCurrentSentence, pauseAllAudio]);
 
   const handlePrevious = useCallback(() => {
     setCurrentFileIndex((prevIndex) => {
@@ -96,7 +104,6 @@ function App() {
       }
       return prevIndex;
     });
-    setSelectedModel(null);
     pauseAllAudio();
   }, [updateCurrentSentence, pauseAllAudio]);
 
@@ -130,20 +137,6 @@ function App() {
         }
 
         const userName = localStorage.getItem('userName');
-        if (userName) {
-          try {
-            const stateResponse = await axios.get(`${API_BASE_URL}/state/${userName}`);
-            if (stateResponse.data) {
-              const { currentFileIndex, selectedModel } = stateResponse.data;
-              setCurrentFileIndex(currentFileIndex);
-              setSelectedModel(selectedModel);
-            }
-          } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status !== 404) {
-              console.error('Failed to load user state:', error);
-            }
-          }
-        }
       } catch (error) {
         console.error('Failed to initialize app:', error);
       }
@@ -188,7 +181,7 @@ function App() {
             >
               <StyledPaper onClick={() => handleModelSelection(model.name)}>
                 <Box p={3} position="relative">
-                  {selectedModel === model.name && (
+                  {selections[currentFileIndex] === model.name && (
                     <SelectedModelIndicator>Selected</SelectedModelIndicator>
                   )}
                   <Typography variant="h6" color="secondary" gutterBottom>
@@ -233,14 +226,18 @@ function App() {
             variant="contained"
             color="primary"
             onClick={handleNext} 
-            disabled={currentFileIndex === models[0].files.length - 1 && !selectedModel}
+            disabled={currentFileIndex === models[0].files.length - 1 && !selections[currentFileIndex]}
           >
             {currentFileIndex === models[0].files.length - 1 ? 'Show Results' : 'Next'}
           </NavigationButton>
         </NavigationContainer>
         <StatsDialog 
           open={showStats}
-          onClose={() => setShowStats(false)}
+          onClose={() => {
+            setShowStats(false);
+            setCurrentFileIndex(0);
+            setSelections({});
+          }}
           stats={modelStats}
         />
         <NameDialog 
