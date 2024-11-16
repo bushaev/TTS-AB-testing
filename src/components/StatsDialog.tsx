@@ -10,6 +10,7 @@ interface StatsDialogProps {
 }
 
 export const StatsDialog = ({ open, onClose, stats }: StatsDialogProps) => {
+  console.log("stats", stats);
   if (!stats) {
     return null;
   }

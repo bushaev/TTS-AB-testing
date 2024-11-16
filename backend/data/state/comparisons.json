@@ -52,5 +52,23 @@
     "fileIndex": 2,
     "selectedModel": "model2",
     "timestamp": "2024-11-16T20:25:48.287Z"
+  },
+  {
+    "userId": "Vitaly",
+    "fileIndex": 0,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:29:56.097Z"
+  },
+  {
+    "userId": "Vitaly",
+    "fileIndex": 1,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:29:56.097Z"
+  },
+  {
+    "userId": "Vitaly",
+    "fileIndex": 2,
+    "selectedModel": "model1",
+    "timestamp": "2024-11-16T20:29:56.097Z"
   }
 ]

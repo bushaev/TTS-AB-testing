@@ -24,8 +24,6 @@ function App() {
 
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
 
-  const [isLoading, setIsLoading] = useState(false);
-
   const pauseAllAudio = useCallback(() => {
     document.querySelectorAll('audio').forEach(audio => audio.pause());
   }, []);
@@ -66,7 +64,6 @@ function App() {
       const isLastSample = models.length > 0 && prevIndex >= models[0].files.length - 1;
 
       if (isLastSample && userId) {
-        setIsLoading(true);
         const comparisons = Object.entries(selections).map(([fileIndex, modelName]) => ({
           fileIndex: parseInt(fileIndex),
           selectedModel: modelName
@@ -78,11 +75,9 @@ function App() {
           })
           .then(() => {
             setShowStats(true);
-            setIsLoading(false);
           })
           .catch(error => {
             console.error('Failed to save comparisons:', error);
-            setIsLoading(false);
           });
           
         return prevIndex;
