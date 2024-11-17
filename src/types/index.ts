@@ -16,3 +16,11 @@ export interface ModelStats {
         byFile: Record<number, number>;
     };
 }
+
+export interface ShuffleMapping {
+    [displayIndex: number]: number;
+}
+
+export interface ShuffleMappings {
+    [fileIndex: number]: ShuffleMapping;
+}

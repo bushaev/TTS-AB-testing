@@ -5,7 +5,7 @@ import { StyledAudioPlayer, AppContainer, StyledPaper, SelectedModelIndicator, N
 import { theme } from "./theme";
 import { NameDialog } from "./components/NameDialog";
 import { StatsDialog } from "./components/StatsDialog";
-import { Model, ModelStats } from "./types";
+import { Model, ModelStats, ShuffleMapping, ShuffleMappings } from "./types";
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -28,6 +28,11 @@ function App() {
     localStorage.getItem('isAnonymousMode') !== 'false'
   );
 
+  const [shuffleMappings, setShuffleMappings] = useState<ShuffleMappings>(() => {
+    const saved = localStorage.getItem('shuffleMappings');
+    return saved ? JSON.parse(saved) : {};
+  });
+
   const pauseAllAudio = useCallback(() => {
     document.querySelectorAll('audio').forEach(audio => audio.pause());
   }, []);
@@ -49,7 +54,37 @@ function App() {
     }
   }, []);
 
-  const handleModelSelection = useCallback((modelName: string) => {
+  const generateShuffleMapping = useCallback((length: number, fileIndex: number) => {
+    const indices = Array.from({ length }, (_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    
+    const mapping: ShuffleMapping = {};
+    indices.forEach((originalIndex, displayIndex) => {
+      mapping[displayIndex] = originalIndex;
+    });
+    
+    setShuffleMappings(prev => {
+      const newMappings = {
+        ...prev,
+        [fileIndex]: mapping
+      };
+      localStorage.setItem('shuffleMappings', JSON.stringify(newMappings));
+      return newMappings;
+    });
+    
+    return mapping;
+  }, []);
+
+  const handleModelSelection = useCallback((displayIndex: number) => {
+    const currentMapping = shuffleMappings[currentFileIndex];
+    if (!currentMapping) return;
+    
+    const originalIndex = currentMapping[displayIndex];
+    const modelName = models[originalIndex].name;
+    
     setSelections(prevSelections => {
       const newSelections = { ...prevSelections };
       
@@ -61,7 +96,7 @@ function App() {
       
       return newSelections;
     });
-  }, [currentFileIndex]);
+  }, [currentFileIndex, models, shuffleMappings]);
 
   const handleNext = useCallback(async () => {
     setCurrentFileIndex((prevIndex) => {
@@ -141,18 +176,27 @@ function App() {
       try {
         const modelsResponse = await axios.get(`${API_BASE_URL}/audio/models`);
         setModels(modelsResponse.data);
+        
+        if (!shuffleMappings[0]) {
+          generateShuffleMapping(modelsResponse.data.length, 0);
+        }
+        
         if (modelsResponse.data[0]?.files[0]?.sentence) {
           setCurrentSentence(modelsResponse.data[0].files[0].sentence);
         }
-
-        const userName = localStorage.getItem('userName');
       } catch (error) {
         console.error('Failed to initialize app:', error);
       }
     };
 
     initializeApp();
-  }, []);
+  }, [generateShuffleMapping, shuffleMappings]);
+
+  useEffect(() => {
+    if (models.length > 0 && !shuffleMappings[currentFileIndex]) {
+      generateShuffleMapping(models.length, currentFileIndex);
+    }
+  }, [currentFileIndex, models.length, shuffleMappings, generateShuffleMapping]);
 
   if (models.length === 0) {
     return <Typography>Loading models...</Typography>;
@@ -193,47 +237,55 @@ function App() {
           "{currentSentence}"
         </Typography>
         <Grid container spacing={3}>
-          {models.map((model, index) => (
-            <Grid 
-              item 
-              xs={12}
-              sm={6}
-              lg={6}
-              key={model.name}
-              style={{ width: '100%' }}
-            >
-              <StyledPaper onClick={() => handleModelSelection(model.name)}>
-                <Box p={3} position="relative">
-                  {selections[currentFileIndex] === model.name && (
-                    <SelectedModelIndicator>Selected</SelectedModelIndicator>
-                  )}
-                  <Typography variant="h6" color="secondary" gutterBottom>
-                    {getDisplayName(model.name, index)}
-                  </Typography>
-                  {currentFiles[index] && (
-                    <Box mt={2}>
-                      <Typography variant="body1" color="textSecondary">
-                        {currentFiles[index].name}
-                      </Typography>
-                      <StyledAudioPlayer
-                        ref={(element: any) => {
-                          if (element && element.audio) {
-                            audioRefs.current[index] = element.audio.current;
-                          }
-                        }}
-                        src={getAudioUrl(currentFiles[index].path)}
-                        onError={(e: Event) => {
-                          console.error("Error loading audio:", e);
-                        }}
-                        autoPlay={false}
-                        autoPlayAfterSrcChange={false}
-                      />
-                    </Box>
-                  )}
-                </Box>
-              </StyledPaper>
-            </Grid>
-          ))}
+          {models.map((_, displayIndex) => {
+            const currentMapping = shuffleMappings[currentFileIndex];
+            if (!currentMapping) return null;
+            
+            const originalIndex = currentMapping[displayIndex];
+            const model = models[originalIndex];
+            
+            return (
+              <Grid 
+                item 
+                xs={12}
+                sm={6}
+                lg={6}
+                key={`${model.name}-${currentFileIndex}-${displayIndex}`}
+                style={{ width: '100%' }}
+              >
+                <StyledPaper onClick={() => handleModelSelection(displayIndex)}>
+                  <Box p={3} position="relative">
+                    {selections[currentFileIndex] === model.name && (
+                      <SelectedModelIndicator>Selected</SelectedModelIndicator>
+                    )}
+                    <Typography variant="h6" color="secondary" gutterBottom>
+                      {getDisplayName(model.name, displayIndex)}
+                    </Typography>
+                    {currentFiles[originalIndex] && (
+                      <Box mt={2}>
+                        <Typography variant="body1" color="textSecondary">
+                          {currentFiles[originalIndex].name}
+                        </Typography>
+                        <StyledAudioPlayer
+                          ref={(element: any) => {
+                            if (element && element.audio) {
+                              audioRefs.current[originalIndex] = element.audio.current;
+                            }
+                          }}
+                          src={getAudioUrl(currentFiles[originalIndex].path)}
+                          onError={(e: Event) => {
+                            console.error("Error loading audio:", e);
+                          }}
+                          autoPlay={false}
+                          autoPlayAfterSrcChange={false}
+                        />
+                      </Box>
+                    )}
+                  </Box>
+                </StyledPaper>
+              </Grid>
+            );
+          })}
         </Grid>
 
         <NavigationContainer>
