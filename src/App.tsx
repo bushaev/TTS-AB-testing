@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Typography, Box, Button, ThemeProvider, CssBaseline, Grid } from "@mui/material";
+import { Typography, Box, Button, ThemeProvider, CssBaseline, Grid, FormControlLabel, Checkbox } from "@mui/material";
 import axios from 'axios';
 import { StyledAudioPlayer, AppContainer, StyledPaper, SelectedModelIndicator, NavigationButton, NavigationContainer } from "./styles/index";
 import { theme } from "./theme";
@@ -23,6 +23,10 @@ function App() {
   const [selections, setSelections] = useState<Record<number, string>>({});
 
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
+
+  const [isAnonymousMode, setIsAnonymousMode] = useState(() => 
+    localStorage.getItem('isAnonymousMode') !== 'false'
+  );
 
   const pauseAllAudio = useCallback(() => {
     document.querySelectorAll('audio').forEach(audio => audio.pause());
@@ -122,6 +126,16 @@ function App() {
     return models.map(model => model.files[currentFileIndex]).filter(Boolean);
   }, [models, currentFileIndex]);
 
+  const getDisplayName = useCallback((modelName: string, index: number) => {
+    return isAnonymousMode ? `Model ${index + 1}` : modelName;
+  }, [isAnonymousMode]);
+
+  const handleAnonymousModeToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.checked;
+    setIsAnonymousMode(newValue);
+    localStorage.setItem('isAnonymousMode', String(newValue));
+  }, []);
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -151,6 +165,20 @@ function App() {
         <Typography variant="h4" component="h1" gutterBottom align="center" color="primary">
           TTS Model Comparison
         </Typography>
+        
+        <Box display="flex" justifyContent="center" mb={2}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isAnonymousMode}
+                onChange={handleAnonymousModeToggle}
+                color="primary"
+              />
+            }
+            label="Hide model names"
+          />
+        </Box>
+
         <Box display="flex" justifyContent="center" mb={2}>
           <Button
             size="small"
@@ -180,7 +208,7 @@ function App() {
                     <SelectedModelIndicator>Selected</SelectedModelIndicator>
                   )}
                   <Typography variant="h6" color="secondary" gutterBottom>
-                    {model.name}
+                    {getDisplayName(model.name, index)}
                   </Typography>
                   {currentFiles[index] && (
                     <Box mt={2}>
@@ -194,7 +222,7 @@ function App() {
                           }
                         }}
                         src={getAudioUrl(currentFiles[index].path)}
-                        onError={(e: Error) => {
+                        onError={(e: Event) => {
                           console.error("Error loading audio:", e);
                         }}
                         autoPlay={false}

@@ -15,4 +15,4 @@ export interface ModelStats {
         total: number;
         byFile: Record<number, number>;
     };
-}  
+}
