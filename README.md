@@ -6,16 +6,18 @@ This website was build fully by AI - Claude 3.5 Sonnet with my guidance.  (Most 
 
 ![TTS Model Comparison Tool Screenshot](public/screenshot.png)
 
-![TTS Model Comparison Tool Stats Dialog](public/charts_screenshot.png)
+![TTS Model Comparison Tool Stats Dialog](public/charts.png)
 
 ## Features
 
 - Interactive comparison of multiple TTS models
+- Shuffle mode (and hidden mode) to prevent bias in user preferences
 - Audio playback with custom controls
 - User session management
 - Statistics tracking for model preferences
 - Responsive Material UI design
 - Results visualization
+- Chi-square test for statistical significance
 
 ## Tech Stack
 

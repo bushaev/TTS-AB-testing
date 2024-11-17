@@ -1,3 +1,5 @@
+import { ChiSquareResult } from '../utils/statistics';
+
 export interface AudioFile {
     name: string;
     path: string;
@@ -10,11 +12,14 @@ export interface Model {
     files: AudioFile[];
 }
 
+export interface StatisticalAnalysis {
+    chiSquare: ChiSquareResult;
+}
+
 export interface ModelStats {
-    [key: string]: {
-        total: number;
-        byFile: Record<number, number>;
-    };
+    total: number;
+    byFile: Record<number, number>;
+    statistics?: StatisticalAnalysis;
 }
 
 export interface ShuffleMapping {

@@ -1,7 +1,8 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Divider } from "@mui/material";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { calculateChiSquare } from '../utils/statistics';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#e57373', '#64b5f6', '#81c784', '#ba68c8', '#4db6ac', '#ff8a65', '#7986cb', '#fff176', '#a1887f'];
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -16,6 +17,13 @@ interface StatsDialogProps {
   onClose: () => void;
   stats: Record<string, ModelStats> | null;
 }
+
+const formatPValue = (p: number): string => {
+  if (p < 0.001) return 'p < 0.001***';
+  if (p < 0.01) return `p = ${p.toFixed(3)}**`;
+  if (p < 0.05) return `p = ${p.toFixed(3)}*`;
+  return `p = ${p.toFixed(3)}`;
+};
 
 export const StatsDialog = ({ open, onClose, stats: allStats }: StatsDialogProps) => {
   const [userStats, setUserStats] = useState<Record<string, ModelStats> | null>(null);
@@ -99,6 +107,35 @@ export const StatsDialog = ({ open, onClose, stats: allStats }: StatsDialogProps
     </Box>
   );
 
+  const renderStatisticalAnalysis = (data: typeof allUsersChartData) => {
+    const observed = data.map(item => item.value);
+    const stats = calculateChiSquare(observed);
+    
+    return (
+      <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+        <Typography variant="h6" gutterBottom>
+          Statistical Analysis
+        </Typography>
+        <Typography variant="body2" color="textSecondary">
+          Chi-square test for goodness of fit (testing if model preferences differ from random chance)
+        </Typography>
+        <Box sx={{ mt: 1 }}>
+          <Typography>
+            χ² = {stats.chiSquareValue.toFixed(2)}, df = {stats.degreesOfFreedom}
+          </Typography>
+          <Typography>
+            {formatPValue(stats.pValue)}
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+            {stats.isSignificant 
+              ? "There is a statistically significant preference for certain models."
+              : "No statistically significant preference detected."}
+          </Typography>
+        </Box>
+      </Box>
+    );
+  };
+
   return (
     <Dialog 
       open={open} 
@@ -116,6 +153,7 @@ export const StatsDialog = ({ open, onClose, stats: allStats }: StatsDialogProps
                   Your Total Comparisons: {userChartData.reduce((sum, item) => sum + item.value, 0)}
                 </Typography>
                 {renderPieChart(userChartData, "Your Selections")}
+                {userChartData.length > 1 && renderStatisticalAnalysis(userChartData)}
               </>
             ) : (
               <Typography variant="subtitle1" align="center">
@@ -128,6 +166,7 @@ export const StatsDialog = ({ open, onClose, stats: allStats }: StatsDialogProps
               All Users Total Comparisons: {totalComparisons}
             </Typography>
             {renderPieChart(allUsersChartData, "All Users Selections")}
+            {allUsersChartData.length > 1 && renderStatisticalAnalysis(allUsersChartData)}
           </Box>
         </Box>
       </DialogContent>
